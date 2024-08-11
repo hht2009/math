@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数学计算题生成器</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        button {
+            margin: 10px;
+            padding: 10px 15px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #questions,
+        #history {
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .question {
+            width: 32%; /* 每列占32%的宽度 */
+            margin: 1%;
+            font-size: 18px;
+            line-height: 1.2; /* 减小上下间距 */
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 5px 10px; /* 减小padding */
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        #history h2 {
+            text-align: center;
+        }
+
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+            }
+
+            .question {
+                width: 30%; /* 打印时每列占30% */
+                margin: 0 1% 1% 0;
+                page-break-inside: avoid; /* 避免在题目内部换页 */
+            }
+
+            h1 {
+                display: none; /* 打印时不显示标题 */
+            }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+</head>
+
+<body>
+    <h1>数学计算题生成器</h1>
+    <div class="form-group">
+        <label for="questionCount">生成题目数量:</label>
+        <input type="number" id="questionCount" class="form-control" value="100" min="1">
+    </div>
+    <div id="questions"></div>
+    <button id="generate"><i class="fas fa-plus"></i> 生成题目</button>
+    <button id="export"><i class="fas fa-file-download"></i> 导出为PDF文件</button>
+    <button id="print"><i class="fas fa-print"></i> 打印题目</button>
+    <div id="history">
+        <h2>生成历史</h2>
+        <div id="historyContent"></div>
+    </div>
+
+    <script>
+        const historyData = [];
+
+        function generateQuestions() {
+            const questionsDiv = document.getElementById("questions");
+            const questionCount = document.getElementById("questionCount").value;
+            questionsDiv.innerHTML = ""; // 清空之前的题目
+            
+            const operations = ["+", "-", "×", "÷"]; // 题目运算符
+            const questions = [];
+
+            for (let i = 0; i < questionCount; i++) {
+                const num1 = Math.floor(Math.random() * 100); // 生成第一个数
+                const num2 = Math.floor(Math.random() * 100); // 生成第二个数
+                const operation = operations[Math.floor(Math.random() * operations.length)]; // 随机选择运算符
+                
+                // 避免除数为零的情况
+                if (operation === "÷" && num2 === 0) {
+                    num2 = 1; // 如果第二个数为0，设为1
+                }
+
+                const question = `${num1} ${operation} ${num2} = `; // 添加等号
+                questions.push(question);
+                questionsDiv.innerHTML += `<div class="question">${i + 1}. ${question}</div>`;
+            }
+
+            historyData.push(questions.join('\n')); // 将题目存入历史记录
+            updateHistory();
+        }
+
+        function updateHistory() {
+            const historyContent = document.getElementById("historyContent");
+            historyContent.innerHTML = "";
+
+            historyData.forEach((item, index) => {
+                historyContent.innerHTML += `<div>${index + 1}: <pre>${item}</pre></div>`;
+            });
+        }
+
+        function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+
+            const questionsDiv = document.getElementById("questions");
+            const questions = questionsDiv.getElementsByClassName("question");
+
+            let y = 10; // y坐标
+            let x = 10; // x坐标
+            const columnWidth = 60; // 每列的宽度
+            const maxColumns = 3; // 每页最大列数
+
+            for (let i = 0; i < questions.length; i++) {
+                const questionText = questions[i].innerText;
+
+                if (i % maxColumns === 0 && i > 0) {
+                    y += 60; // 新的一行
+                    x = 10; // 重置x坐标
+                }
+
+                if (i % maxColumns === 0 && i > 0 && i % (maxColumns * 10) === 0) {
+                    pdf.addPage(); // 每10行添加新的一页
+                    y = 10; // 重置y坐标
+                }
+
+                pdf.text(questionText, x, y);
+                x += columnWidth; // 移动到下一列
+
+                if (i === questions.length - 1) {
+                    pdf.save('数学计算题.pdf'); // 保存PDF文件
+                }
+            }
+        }
+
+        function printQuestions() {
+            const questionsDiv = document.getElementById("questions");
+            const printWindow = window.open('', '', 'height=600,width=800');
+            printWindow.document.write('<html><head><title>打印题目</title>');
+            printWindow.document.write('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.0/css/bootstrap.min.css">');
+            printWindow.document.write('</head><body >');
+            printWindow.document.write('<h1>数学计算题</h1>');
+            printWindow.document.write('<div style="display: flex; flex-wrap: wrap;">');
+
+            const questions = questionsDiv.getElementsByClassName("question");
+            for (let i = 0; i < questions.length; i++) {
+                printWindow.document.write(`<div class="question" style="width:30%; margin:1%; text-align: center;">${questions[i].innerHTML}</div>`);
+            }
+
+            printWindow.document.write('</div></body></html>');
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        document.getElementById("generate").addEventListener("click", generateQuestions);
+        document.getElementById("export").addEventListener("click", exportToPDF);
+        document.getElementById("print").addEventListener("click", printQuestions);
+    </script>
+</body>
+
+</html>
